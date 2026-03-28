@@ -192,6 +192,47 @@ export default function VotingPage() {
           ))}
         </div>
       )}
+
+      {/* Donation Section */}
+      <div className="mt-8 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-5">
+        <h2 className="text-lg font-bold text-amber-900 mb-2">
+          🙏 {t(locale, "donationTitle")}
+        </h2>
+        <p className="text-sm text-amber-800 mb-4">
+          {t(locale, "donationDesc")}
+        </p>
+
+        {/* JustGiving */}
+        <a
+          href="https://www.justgiving.com/team/kxmc-fundraisingteam-25"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg mb-4 transition-colors"
+        >
+          💜 {t(locale, "justGivingLabel")}
+        </a>
+
+        {/* Bank Transfer */}
+        <div className="bg-white rounded-lg border border-amber-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            🏦 {t(locale, "bankTransferLabel")}
+          </h3>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">{t(locale, "accountName")}:</span>
+              <span className="font-mono font-semibold text-gray-900">KCMC</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">{t(locale, "sortCode")}:</span>
+              <span className="font-mono font-semibold text-gray-900">40-11-18</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">{t(locale, "accountNumber")}:</span>
+              <span className="font-mono font-semibold text-gray-900">75876788</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

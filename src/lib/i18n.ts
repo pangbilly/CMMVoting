@@ -21,6 +21,13 @@ export const translations = {
     loading: "載入中...",
     error: "發生錯誤",
     selectScore: "請選擇評分",
+    donationTitle: "奉獻",
+    donationDesc: "歡迎透過以下方式奉獻支持重建計劃：",
+    justGivingLabel: "JustGiving 捐款頁面",
+    bankTransferLabel: "銀行轉賬",
+    accountName: "戶口名稱",
+    sortCode: "銀行代碼",
+    accountNumber: "戶口號碼",
   },
   en: {
     title: "CMM Got Talent",
@@ -42,6 +49,13 @@ export const translations = {
     loading: "Loading...",
     error: "An error occurred",
     selectScore: "Please select a score",
+    donationTitle: "Donation",
+    donationDesc: "You may make an offering towards the Redevelopment Project via:",
+    justGivingLabel: "JustGiving Page",
+    bankTransferLabel: "Bank Transfer",
+    accountName: "Account Name",
+    sortCode: "Sort Code",
+    accountNumber: "Account Number",
   },
 } as const;
 
