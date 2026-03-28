@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx next:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_Dph9iCTUBz6E@ep-icy-smoke-abkowglh-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx drizzle-kit push)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_Dph9iCTUBz6E@ep-icy-smoke-abkowglh-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx tsx src/db/seed.ts)"
+    ]
+  }
+}
