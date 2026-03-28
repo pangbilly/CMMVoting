@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       .select({
         actId: votes.actId,
         avgScore: sql<number>`round(avg(${votes.score})::numeric, 2)`,
+        totalScore: sql<number>`coalesce(sum(${votes.score}), 0)`,
         totalVotes: sql<number>`count(*)`,
         score1: sql<number>`count(*) filter (where ${votes.score} = 1)`,
         score2: sql<number>`count(*) filter (where ${votes.score} = 2)`,
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
       ...act,
       stats: statsMap.get(act.id) || {
         avgScore: 0,
+        totalScore: 0,
         totalVotes: 0,
         score1: 0,
         score2: 0,

@@ -11,6 +11,7 @@ type ActResult = {
   isActive: boolean;
   stats: {
     avgScore: number;
+    totalScore: number;
     totalVotes: number;
     score1: number;
     score2: number;
@@ -267,8 +268,9 @@ export default function AdminPage() {
       {results.length > 0 && (() => {
         const ranked = [...results]
           .filter((r) => Number(r.stats.totalVotes) > 0)
-          .sort((a, b) => Number(b.stats.avgScore) - Number(a.stats.avgScore))
+          .sort((a, b) => Number(b.stats.totalScore) - Number(a.stats.totalScore))
           .slice(0, 5);
+        const topScore = Number(ranked[0]?.stats.totalScore) || 1;
         const medals = ["🥇", "🥈", "🥉", "4", "5"];
         return ranked.length > 0 ? (
           <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4 mb-4">
@@ -277,8 +279,7 @@ export default function AdminPage() {
             </h2>
             <div className="space-y-2">
               {ranked.map((act, i) => {
-                const maxAvg = Number(ranked[0].stats.avgScore) || 1;
-                const pct = (Number(act.stats.avgScore) / 5) * 100;
+                const pct = (Number(act.stats.totalScore) / topScore) * 100;
                 return (
                   <div key={act.id} className="flex items-center gap-3">
                     <span className={`w-7 text-center flex-shrink-0 ${i < 3 ? "text-lg" : "text-sm font-bold text-gray-400"}`}>
@@ -308,10 +309,10 @@ export default function AdminPage() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="text-sm font-bold text-yellow-700 w-10 text-right flex-shrink-0">
-                          {act.stats.avgScore}
+                        <span className="text-sm font-bold text-yellow-700 w-12 text-right flex-shrink-0">
+                          {act.stats.totalScore} pts
                         </span>
-                        <span className="text-[10px] text-gray-400 w-12 flex-shrink-0">
+                        <span className="text-[10px] text-gray-400 w-14 flex-shrink-0">
                           ({act.stats.totalVotes} vote{Number(act.stats.totalVotes) !== 1 ? "s" : ""})
                         </span>
                       </div>
