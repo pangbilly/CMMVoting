@@ -12,6 +12,34 @@ function checkPassword(request: NextRequest): boolean {
   return password === process.env.ADMIN_PASSWORD;
 }
 
+// DELETE: clear all votes (requires password re-confirmation in body)
+export async function DELETE(request: NextRequest) {
+  if (!checkPassword(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    // Double-check: require the admin password again in the body
+    if (body.confirmPassword !== process.env.ADMIN_PASSWORD) {
+      return NextResponse.json(
+        { error: "Password confirmation failed" },
+        { status: 403 }
+      );
+    }
+
+    await db.delete(votes);
+
+    return NextResponse.json({ success: true, message: "All votes cleared" });
+  } catch (error) {
+    console.error("Error clearing votes:", error);
+    return NextResponse.json(
+      { error: "Failed to clear votes" },
+      { status: 500 }
+    );
+  }
+}
+
 // GET: fetch results
 export async function GET(request: NextRequest) {
   if (!checkPassword(request)) {

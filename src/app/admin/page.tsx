@@ -46,6 +46,8 @@ export default function AdminPage() {
   });
   const [filterChurch, setFilterChurch] = useState<string>("all");
   const [authError, setAuthError] = useState(false);
+  const [clearVotesStep, setClearVotesStep] = useState<0 | 1 | 2>(0);
+  const [clearConfirmPassword, setClearConfirmPassword] = useState("");
 
   const headers = {
     "Content-Type": "application/json",
@@ -106,6 +108,25 @@ export default function AdminPage() {
       }),
     });
     setVotingLocked(!votingLocked);
+  };
+
+  const clearAllVotes = async () => {
+    try {
+      const res = await fetch("/api/admin", {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ confirmPassword: clearConfirmPassword }),
+      });
+      if (res.ok) {
+        setClearVotesStep(0);
+        setClearConfirmPassword("");
+        fetchResults();
+      } else {
+        alert("Password confirmation failed. Votes NOT cleared.");
+      }
+    } catch {
+      alert("Error clearing votes.");
+    }
   };
 
   const moveAct = async (actId: number, direction: "up" | "down") => {
@@ -243,8 +264,77 @@ export default function AdminPage() {
           >
             + Add Act
           </button>
+          <button
+            onClick={() => setClearVotesStep(1)}
+            className="px-4 py-2 rounded-lg bg-gray-800 text-white font-medium text-sm hover:bg-gray-900"
+          >
+            🗑️ Clear All Votes
+          </button>
         </div>
       </div>
+
+      {/* Clear votes confirmation modal */}
+      {clearVotesStep >= 1 && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            {clearVotesStep === 1 && (
+              <>
+                <h3 className="text-lg font-bold text-red-700 mb-2">⚠️ Clear ALL Votes?</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This will permanently delete every vote in the database. This cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setClearVotesStep(0)}
+                    className="flex-1 px-4 py-2 rounded-lg border text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setClearVotesStep(2)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+                  >
+                    Yes, I&apos;m sure
+                  </button>
+                </div>
+              </>
+            )}
+            {clearVotesStep === 2 && (
+              <>
+                <h3 className="text-lg font-bold text-red-700 mb-2">🔐 Re-enter Admin Password</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Type the admin password again to confirm deletion.
+                </p>
+                <input
+                  type="password"
+                  value={clearConfirmPassword}
+                  onChange={(e) => setClearConfirmPassword(e.target.value)}
+                  placeholder="Admin password"
+                  className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setClearVotesStep(0);
+                      setClearConfirmPassword("");
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg border text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={clearAllVotes}
+                    disabled={!clearConfirmPassword}
+                    className="flex-1 px-4 py-2 rounded-lg bg-red-700 text-white text-sm font-bold hover:bg-red-800 disabled:opacity-40"
+                  >
+                    🗑️ DELETE ALL VOTES
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Summary bar */}
       <div className="bg-white rounded-lg border p-4 mb-4 flex gap-6 text-sm">
