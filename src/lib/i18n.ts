@@ -28,6 +28,11 @@ export const translations = {
     accountName: "戶口名稱",
     sortCode: "銀行代碼",
     accountNumber: "戶口號碼",
+    findOutMoreTitle: "認識更多",
+    findOutMoreDesc: "凡想進一步認識我們教會重建計劃的朋友，歡迎瀏覽本堂網頁和訂閱重建電子通訊：",
+    visitWebsite: "本堂網頁",
+    subscribeNewsletter: "訂閱電子通訊",
+    connectSocial: "追蹤我們的社交媒體",
   },
   en: {
     title: "CMM Got Talent",
@@ -56,6 +61,11 @@ export const translations = {
     accountName: "Account Name",
     sortCode: "Sort Code",
     accountNumber: "Account Number",
+    findOutMoreTitle: "Find Out More",
+    findOutMoreDesc: "Learn more about our church redevelopment project — visit our website and subscribe to our newsletter:",
+    visitWebsite: "Visit our website",
+    subscribeNewsletter: "Subscribe to our newsletter",
+    connectSocial: "Connect with us on social media",
   },
 } as const;
 
