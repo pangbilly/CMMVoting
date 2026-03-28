@@ -95,6 +95,15 @@ export default function VotingPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
+      {/* Logo */}
+      <div className="flex justify-center mb-4">
+        <img
+          src="/logo.png"
+          alt="Rooted in King's Cross — Rebuild Renew Transform"
+          className="w-full max-w-xs"
+        />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
