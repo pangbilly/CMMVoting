@@ -202,13 +202,93 @@ export default function VotingPage() {
         </div>
       )}
 
-      {/* Guide link at bottom */}
-      <div className="mt-8 text-center">
+      {/* JustGiving */}
+      <a
+        href="https://www.justgiving.com/page/kxmc-fundraising-25"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg mt-8 transition-colors"
+      >
+        💜 {t(locale, "justGivingLabel")}
+      </a>
+
+      {/* Find Out More / Social */}
+      <div className="mt-4 bg-gradient-to-br from-sky-50 to-teal-50 rounded-xl border border-sky-200 p-5">
+        <h2 className="text-lg font-bold text-sky-900 mb-2">
+          🔗 {t(locale, "findOutMoreTitle")}
+        </h2>
+        <p className="text-sm text-sky-800 mb-4">
+          {t(locale, "findOutMoreDesc")}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <a
+            href="https://www.kxmc.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            🌐 {t(locale, "visitWebsite")}
+          </a>
+          <a
+            href="https://www.kxmc.org/zh-hk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            🌐 網頁 (中文)
+          </a>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <a
+            href="https://mailchi.mp/kxmc/eng-newsletter"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            📧 Newsletter
+          </a>
+          <a
+            href="https://mailchi.mp/kxmc/chi-newsletter"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            📧 電子通訊 (中文)
+          </a>
+        </div>
+
+        <p className="text-xs font-semibold text-sky-700 mb-2">
+          📱 {t(locale, "connectSocial")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <a
+            href="https://www.facebook.com/KingsCrossMethodistChurch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            Facebook
+          </a>
+          <a
+            href="https://www.instagram.com/kxmc_church/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
+          >
+            Instagram
+          </a>
+        </div>
+      </div>
+
+      {/* Guide link */}
+      <div className="mt-4 mb-4 text-center">
         <Link
           href="/guide"
           className="inline-flex items-center gap-2 text-sm bg-emerald-100 text-emerald-800 px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-200 transition-colors"
         >
-          📖 {t(locale, "guideTitle")} — {t(locale, "donationTitle")} · {t(locale, "findOutMoreTitle")}
+          📖 {t(locale, "guideTitle")}
         </Link>
       </div>
     </div>

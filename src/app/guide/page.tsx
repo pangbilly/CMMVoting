@@ -80,7 +80,7 @@ export default function GuidePage() {
         </div>
 
         <a
-          href="https://www.justgiving.com/team/kxmc-fundraisingteam-25"
+          href="https://www.justgiving.com/page/kxmc-fundraising-25"
           target="_blank"
           rel="noopener noreferrer"
           className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg mt-4 transition-colors"
