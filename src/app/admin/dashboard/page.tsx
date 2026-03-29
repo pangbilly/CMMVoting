@@ -480,7 +480,7 @@ function RevealView({
                   </span>
                 </div>
 
-                {/* Bar */}
+                {/* Bar — fixed width container so all bars are identical */}
                 <div className="flex-1 h-8 lg:h-10 bg-gray-800/40 rounded-r-lg overflow-hidden relative">
                   <div
                     className={`h-full rounded-r-lg flex items-center justify-end pr-3 ${
@@ -514,8 +514,12 @@ function RevealView({
                   )}
                 </div>
 
-                {/* Church badge */}
-                <ChurchBadge church={act.church} dimmed={eliminated} />
+                {/* Church badge — only show at final reveal to keep bar widths equal */}
+                {scoresRevealed ? (
+                  <ChurchBadge church={act.church} dimmed={eliminated} />
+                ) : (
+                  <span className="w-0" />
+                )}
               </div>
             );
           })}
