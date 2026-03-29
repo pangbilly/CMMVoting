@@ -183,10 +183,11 @@ export default function DashboardTestPage() {
   // Max score for bar scaling
   const maxScore = Math.max(...Object.values(scores), 1);
 
-  // Sort acts by current score for ranking display
-  const rankedActs = [...acts].sort(
-    (a, b) => (scores[b.id] || 0) - (scores[a.id] || 0)
-  );
+  // During replay: performance order. After finished: sort by score.
+  const finished = progress >= 1 && !playing;
+  const displayActs = finished
+    ? [...acts].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0))
+    : [...acts].sort((a, b) => a.orderNumber - b.orderNumber);
 
   // --- Login ---
   if (!authenticated) {
@@ -295,7 +296,7 @@ export default function DashboardTestPage() {
 
       {/* Bar race — sorted by current score (dynamic reordering!) */}
       <div className="max-w-5xl mx-auto space-y-1.5">
-        {rankedActs.map((act, idx) => {
+        {displayActs.map((act, idx) => {
           const score = scores[act.id] || 0;
           const count = voteCounts[act.id] || 0;
           const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
@@ -311,13 +312,13 @@ export default function DashboardTestPage() {
                 opacity: score > 0 ? 1 : 0.3,
               }}
             >
-              {/* Rank */}
+              {/* Act number during replay, rank when finished */}
               <span
                 className={`text-xs lg:text-sm font-mono w-6 text-right ${
                   isLeader ? "text-yellow-400 font-bold" : "text-gray-500"
                 }`}
               >
-                {idx + 1}
+                {finished ? idx + 1 : act.orderNumber}
               </span>
 
               {/* Name */}
