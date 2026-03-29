@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import { getVoterId } from "@/lib/voter";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { StarRating } from "@/components/StarRating";
+import Link from "next/link";
 import type { Act } from "@/db/schema";
 
 type VoteMap = Record<number, number>;
@@ -112,7 +113,15 @@ export default function VotingPage() {
           </h1>
           <p className="text-sm text-gray-500">{t(locale, "subtitle")}</p>
         </div>
-        <LanguageToggle />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/guide"
+            className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded-lg font-medium hover:bg-emerald-200 transition-colors"
+          >
+            📖 {t(locale, "guideLink")}
+          </Link>
+          <LanguageToggle />
+        </div>
       </div>
 
       {/* Voting locked banner */}
@@ -193,118 +202,14 @@ export default function VotingPage() {
         </div>
       )}
 
-      {/* Donation Section */}
-      <div className="mt-8 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-5">
-        <h2 className="text-lg font-bold text-amber-900 mb-2">
-          🙏 {t(locale, "donationTitle")}
-        </h2>
-        <p className="text-sm text-amber-800 mb-4">
-          {t(locale, "donationDesc")}
-        </p>
-
-        {/* JustGiving */}
-        <a
-          href="https://www.justgiving.com/team/kxmc-fundraisingteam-25"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg mb-4 transition-colors"
+      {/* Guide link at bottom */}
+      <div className="mt-8 text-center">
+        <Link
+          href="/guide"
+          className="inline-flex items-center gap-2 text-sm bg-emerald-100 text-emerald-800 px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-200 transition-colors"
         >
-          💜 {t(locale, "justGivingLabel")}
-        </a>
-
-        {/* Bank Transfer */}
-        <div className="bg-white rounded-lg border border-amber-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            🏦 {t(locale, "bankTransferLabel")}
-          </h3>
-          <div className="space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t(locale, "accountName")}:</span>
-              <span className="font-mono font-semibold text-gray-900">KCMC</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t(locale, "sortCode")}:</span>
-              <span className="font-mono font-semibold text-gray-900">40-11-18</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t(locale, "accountNumber")}:</span>
-              <span className="font-mono font-semibold text-gray-900">75876788</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Find Out More Section */}
-      <div className="mt-4 bg-gradient-to-br from-sky-50 to-teal-50 rounded-xl border border-sky-200 p-5">
-        <h2 className="text-lg font-bold text-sky-900 mb-2">
-          🔗 {t(locale, "findOutMoreTitle")}
-        </h2>
-        <p className="text-sm text-sky-800 mb-4">
-          {t(locale, "findOutMoreDesc")}
-        </p>
-
-        {/* Website links */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <a
-            href="https://www.kxmc.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            🌐 {t(locale, "visitWebsite")}
-          </a>
-          <a
-            href="https://www.kxmc.org/zh-hk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            🌐 網頁 (中文)
-          </a>
-        </div>
-
-        {/* Newsletter links */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <a
-            href="https://mailchi.mp/kxmc/eng-newsletter"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            📧 Newsletter
-          </a>
-          <a
-            href="https://mailchi.mp/kxmc/chi-newsletter"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            📧 電子通訊 (中文)
-          </a>
-        </div>
-
-        {/* Social media */}
-        <p className="text-xs font-semibold text-sky-700 mb-2">
-          📱 {t(locale, "connectSocial")}
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <a
-            href="https://www.facebook.com/KingsCrossMethodistChurch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            Facebook
-          </a>
-          <a
-            href="https://www.instagram.com/kxmc_church/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2.5 px-3 rounded-lg text-sm transition-colors"
-          >
-            Instagram
-          </a>
-        </div>
+          📖 {t(locale, "guideTitle")} — {t(locale, "donationTitle")} · {t(locale, "findOutMoreTitle")}
+        </Link>
       </div>
     </div>
   );
