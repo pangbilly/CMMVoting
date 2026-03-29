@@ -248,6 +248,12 @@ export default function AdminPage() {
           CMM Got Talent — Admin
         </h1>
         <div className="flex gap-2">
+          <a
+            href="/admin/dashboard"
+            className="px-4 py-2 rounded-lg bg-gray-900 text-white font-medium text-sm hover:bg-gray-800"
+          >
+            📊 Dashboard
+          </a>
           <button
             onClick={toggleVotingLock}
             className={`px-4 py-2 rounded-lg font-medium text-sm ${
