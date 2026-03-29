@@ -30,11 +30,17 @@ const CHURCH_COLORS: Record<string, string> = {
   Epsom: "#06b6d4",
 };
 
-function ChurchBadge({ church }: { church: string }) {
+function ChurchBadge({
+  church,
+  dimmed,
+}: {
+  church: string;
+  dimmed?: boolean;
+}) {
   const hex = CHURCH_COLORS[church] || "#6b7280";
   return (
     <span
-      className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
+      className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide transition-opacity duration-700 ${dimmed ? "opacity-30" : ""}`}
       style={{
         backgroundColor: `${hex}20`,
         color: hex,
@@ -46,19 +52,26 @@ function ChurchBadge({ church }: { church: string }) {
   );
 }
 
-const MEDAL_STYLES: Record<number, { emoji: string; bg: string }> = {
-  1: {
-    emoji: "🥇",
-    bg: "bg-gradient-to-r from-yellow-900/40 to-yellow-700/20 border border-yellow-500/30",
-  },
-  2: {
-    emoji: "🥈",
-    bg: "bg-gradient-to-r from-gray-700/40 to-gray-500/20 border border-gray-400/30",
-  },
-  3: {
-    emoji: "🥉",
-    bg: "bg-gradient-to-r from-amber-900/40 to-amber-700/20 border border-amber-600/30",
-  },
+// Reveal stages for the Top 5 view:
+// 0 = nothing shown
+// 1 = all bars grow (full race chart, all acts)
+// 2 = top 5 highlighted, rest greyed out
+// 3 = top 3 highlighted, rest greyed out
+// 4 = winner highlighted
+type RevealStage = 0 | 1 | 2 | 3 | 4;
+
+const STAGE_LABELS: Record<RevealStage, string> = {
+  0: "Show All Acts",
+  1: "Reveal Top 5",
+  2: "Reveal Top 3",
+  3: "Reveal Winner",
+  4: "All Revealed!",
+};
+
+const MEDAL_EMOJI: Record<number, string> = {
+  1: "🥇",
+  2: "🥈",
+  3: "🥉",
 };
 
 export default function DashboardPage() {
@@ -66,13 +79,13 @@ export default function DashboardPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [results, setResults] = useState<ActResult[]>([]);
+  const [uniqueVoters, setUniqueVoters] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState<"reveal" | "analytics">(
     "reveal"
   );
-  const [revealedCount, setRevealedCount] = useState(0);
+  const [revealStage, setRevealStage] = useState<RevealStage>(0);
   const [barsVisible, setBarsVisible] = useState(false);
-  const [justRevealed, setJustRevealed] = useState<number | null>(null);
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
@@ -86,6 +99,7 @@ export default function DashboardPage() {
       }
       const data = await res.json();
       setResults(data.results);
+      setUniqueVoters(data.uniqueVoters ?? 0);
       setAuthenticated(true);
       setAuthError(false);
     } catch {
@@ -102,6 +116,7 @@ export default function DashboardPage() {
     if (res.ok) {
       const data = await res.json();
       setResults(data.results);
+      setUniqueVoters(data.uniqueVoters ?? 0);
       setAuthenticated(true);
       setAuthError(false);
     } else {
@@ -131,15 +146,7 @@ export default function DashboardPage() {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.code === "ArrowRight") {
         e.preventDefault();
-        setRevealedCount((c) => {
-          if (c < 5) {
-            const next = c + 1;
-            setJustRevealed(next);
-            setTimeout(() => setJustRevealed(null), 1500);
-            return next;
-          }
-          return c;
-        });
+        setRevealStage((s) => (s < 4 ? ((s + 1) as RevealStage) : s));
       }
     };
     window.addEventListener("keydown", handler);
@@ -154,17 +161,6 @@ export default function DashboardPage() {
         Number(b.stats.avgScore) - Number(a.stats.avgScore) ||
         a.nameEn.localeCompare(b.nameEn)
     );
-
-  const top5 = sorted.slice(0, 5);
-
-  const revealNext = () => {
-    if (revealedCount < 5) {
-      const next = revealedCount + 1;
-      setRevealedCount(next);
-      setJustRevealed(next);
-      setTimeout(() => setJustRevealed(null), 1500);
-    }
-  };
 
   // --- Login screen ---
   if (!authenticated) {
@@ -235,20 +231,19 @@ export default function DashboardPage() {
 
       {activeView === "reveal" ? (
         <RevealView
-          top5={top5}
-          revealedCount={revealedCount}
-          justRevealed={justRevealed}
-          onRevealNext={revealNext}
-          onReset={() => {
-            setRevealedCount(0);
-            setJustRevealed(null);
-          }}
+          sorted={sorted}
+          revealStage={revealStage}
+          onNext={() =>
+            setRevealStage((s) => (s < 4 ? ((s + 1) as RevealStage) : s))
+          }
+          onReset={() => setRevealStage(0)}
         />
       ) : (
         <AnalyticsView
           results={results}
           sorted={sorted}
           barsVisible={barsVisible}
+          uniqueVoters={uniqueVoters}
         />
       )}
     </div>
@@ -256,109 +251,164 @@ export default function DashboardPage() {
 }
 
 // =====================================================
-// VIEW 1: TOP 5 REVEAL
+// VIEW 1: STAGED TOP 5 REVEAL (BAR RACE)
 // =====================================================
 
 function RevealView({
-  top5,
-  revealedCount,
-  justRevealed,
-  onRevealNext,
+  sorted,
+  revealStage,
+  onNext,
   onReset,
 }: {
-  top5: ActResult[];
-  revealedCount: number;
-  justRevealed: number | null;
-  onRevealNext: () => void;
+  sorted: ActResult[];
+  revealStage: RevealStage;
+  onNext: () => void;
   onReset: () => void;
 }) {
-  // Display order: #5 at top → #1 at bottom
-  const displayOrder = [...top5].reverse();
+  const maxScore = sorted.length > 0 ? Number(sorted[0].stats.totalScore) : 1;
+
+  // Which acts are highlighted at each stage
+  const highlightCount =
+    revealStage === 0
+      ? 0
+      : revealStage === 1
+        ? sorted.length // all highlighted
+        : revealStage === 2
+          ? 5
+          : revealStage === 3
+            ? 3
+            : 1;
+
+  const showBars = revealStage >= 1;
+
+  // Title changes with stage
+  const title =
+    revealStage === 0
+      ? "CMM GOT TALENT"
+      : revealStage === 1
+        ? "ALL ACTS"
+        : revealStage === 2
+          ? "TOP 5"
+          : revealStage === 3
+            ? "TOP 3"
+            : "WINNER";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-4 py-8 relative">
+    <div className="flex flex-col min-h-[calc(100vh-56px)] px-6 lg:px-12 py-6 relative">
       {/* Title */}
-      <h1 className="text-6xl lg:text-8xl font-black mb-8 lg:mb-12 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
-        TOP 5
+      <h1 className="text-5xl lg:text-7xl font-black text-center mb-6 lg:mb-8 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+        {title}
       </h1>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-3 lg:gap-4 w-full max-w-3xl">
-        {displayOrder.map((act, displayIdx) => {
-          const rank = 5 - displayIdx; // 5, 4, 3, 2, 1
-          const revealSlot = 6 - rank; // rank 5 → slot 1, rank 1 → slot 5
-          const isVisible = revealedCount >= revealSlot;
-          const isJustRevealed = justRevealed === revealSlot;
-          const medal = MEDAL_STYLES[rank];
+      {/* Bar race chart */}
+      <div className="flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full">
+        <div className="space-y-1.5 lg:space-y-2">
+          {sorted.map((act, idx) => {
+            const rank = idx + 1;
+            const pct =
+              maxScore > 0
+                ? (Number(act.stats.totalScore) / maxScore) * 100
+                : 0;
+            const hex = CHURCH_COLORS[act.church] || "#6b7280";
 
-          return (
-            <div
-              key={act.id}
-              className={`flex items-center gap-4 lg:gap-6 p-4 lg:p-6 rounded-2xl transition-all duration-700 ease-out ${
-                isVisible
-                  ? `opacity-100 scale-100 ${medal?.bg || "bg-gray-800/50 border border-gray-700/30"}`
-                  : "opacity-0 scale-95 bg-gray-900/20 border border-gray-800/10"
-              } ${isJustRevealed ? "ring-2 ring-yellow-400/60 shadow-[0_0_30px_rgba(234,179,8,0.3)]" : ""}`}
-            >
-              {/* Rank */}
-              <span className="text-4xl lg:text-5xl min-w-[60px] text-center">
-                {isVisible ? (medal?.emoji || `#${rank}`) : "?"}
-              </span>
+            const isHighlighted =
+              revealStage === 1 || rank <= highlightCount;
+            const isDimmed = revealStage >= 2 && !isHighlighted;
+            const isWinner = revealStage === 4 && rank === 1;
 
-              {/* Name */}
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-xl lg:text-2xl font-bold transition-colors duration-700 ${isVisible ? "text-white" : "text-gray-700"}`}
-                >
-                  {isVisible ? act.nameZh : "???"}
-                </p>
-                <p
-                  className={`text-sm lg:text-lg transition-colors duration-700 ${isVisible ? "text-gray-400" : "text-gray-800"}`}
-                >
-                  {isVisible ? act.nameEn : "???"}
-                </p>
+            const medal = MEDAL_EMOJI[rank];
+            const showMedal = revealStage >= 2 && rank <= 3 && isHighlighted;
+
+            return (
+              <div
+                key={act.id}
+                className={`flex items-center gap-2 lg:gap-3 transition-all duration-700 ${
+                  isDimmed
+                    ? "opacity-25 scale-[0.97]"
+                    : isWinner
+                      ? "scale-[1.02]"
+                      : "opacity-100"
+                }`}
+              >
+                {/* Rank / Medal */}
+                <span className="text-lg lg:text-2xl w-8 lg:w-10 text-right">
+                  {showMedal ? medal : (
+                    <span className="text-gray-500 text-xs lg:text-sm font-mono">
+                      {rank}
+                    </span>
+                  )}
+                </span>
+
+                {/* Name */}
+                <div className="w-36 lg:w-52 truncate">
+                  <span
+                    className={`text-sm lg:text-base font-bold transition-colors duration-700 ${isDimmed ? "text-gray-600" : "text-white"}`}
+                  >
+                    {act.nameZh}
+                  </span>
+                  <span
+                    className={`text-xs ml-1.5 hidden lg:inline transition-colors duration-700 ${isDimmed ? "text-gray-700" : "text-gray-400"}`}
+                  >
+                    {act.nameEn}
+                  </span>
+                </div>
+
+                {/* Bar */}
+                <div className="flex-1 h-8 lg:h-10 bg-gray-800/40 rounded-r-lg overflow-hidden relative">
+                  <div
+                    className={`h-full rounded-r-lg transition-all ease-out flex items-center justify-end pr-3 ${
+                      isWinner
+                        ? "shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+                        : ""
+                    }`}
+                    style={{
+                      width: showBars ? `${Math.max(pct, 3)}%` : "0%",
+                      backgroundColor: isDimmed ? "#374151" : hex,
+                      transitionDuration: revealStage === 1 ? "1200ms" : "800ms",
+                      transitionDelay:
+                        revealStage === 1 ? `${idx * 60}ms` : "0ms",
+                    }}
+                  >
+                    {showBars && pct > 18 && (
+                      <span
+                        className={`text-xs lg:text-sm font-bold transition-colors duration-700 ${isDimmed ? "text-gray-500" : "text-white"}`}
+                      >
+                        {act.stats.totalScore}
+                      </span>
+                    )}
+                  </div>
+                  {showBars && pct <= 18 && (
+                    <span
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold ${isDimmed ? "text-gray-600" : "text-gray-400"}`}
+                    >
+                      {act.stats.totalScore}
+                    </span>
+                  )}
+                </div>
+
+                {/* Church badge */}
+                <ChurchBadge church={act.church} dimmed={isDimmed} />
               </div>
-
-              {/* Church badge */}
-              {isVisible && <ChurchBadge church={act.church} />}
-
-              {/* Score */}
-              <div className="text-right min-w-[80px]">
-                <p
-                  className={`text-3xl lg:text-4xl font-black transition-colors duration-700 ${isVisible ? "text-white" : "text-gray-800"}`}
-                >
-                  {isVisible ? act.stats.totalScore : "—"}
-                </p>
-                {isVisible && (
-                  <p className="text-xs lg:text-sm text-gray-500">
-                    {act.stats.totalVotes} votes
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Reveal button */}
+      {/* Next stage button */}
       <button
-        onClick={onRevealNext}
-        disabled={revealedCount >= 5}
-        className={`fixed bottom-8 right-8 px-6 py-3 lg:px-8 lg:py-4 rounded-2xl font-bold text-lg lg:text-xl transition-all ${
-          revealedCount >= 5
+        onClick={onNext}
+        disabled={revealStage >= 4}
+        className={`fixed bottom-8 right-8 px-6 py-3 lg:px-8 lg:py-4 rounded-2xl font-bold text-base lg:text-xl transition-all ${
+          revealStage >= 4
             ? "bg-green-600 text-white cursor-default"
             : "bg-yellow-500 hover:bg-yellow-400 text-gray-950 shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)]"
         }`}
       >
-        {revealedCount >= 5
-          ? "All Revealed!"
-          : revealedCount === 0
-            ? "Start Reveal"
-            : `Reveal #${5 - revealedCount}`}
+        {STAGE_LABELS[revealStage]}
       </button>
 
       {/* Reset button */}
-      {revealedCount > 0 && (
+      {revealStage > 0 && (
         <button
           onClick={onReset}
           className="fixed bottom-8 left-8 px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 transition-colors"
@@ -368,9 +418,9 @@ function RevealView({
       )}
 
       {/* Hint */}
-      {revealedCount === 0 && (
-        <p className="text-gray-600 text-sm mt-8 animate-pulse">
-          Press Space, Arrow Right, or click the button to reveal
+      {revealStage === 0 && (
+        <p className="text-gray-600 text-sm text-center mt-4 animate-pulse">
+          Press Space, Arrow Right, or click the button to begin
         </p>
       )}
     </div>
@@ -385,10 +435,12 @@ function AnalyticsView({
   results,
   sorted,
   barsVisible,
+  uniqueVoters,
 }: {
   results: ActResult[];
   sorted: ActResult[];
   barsVisible: boolean;
+  uniqueVoters: number;
 }) {
   const totalVotes = results.reduce(
     (sum, a) => sum + Number(a.stats.totalVotes),
@@ -398,9 +450,6 @@ function AnalyticsView({
     (sum, a) => sum + Number(a.stats.totalScore),
     0
   );
-  const actsWithVotes = results.filter(
-    (a) => Number(a.stats.totalVotes) > 0
-  ).length;
   const avgScore =
     totalVotes > 0 ? (totalScore / totalVotes).toFixed(2) : "0.00";
 
@@ -430,37 +479,49 @@ function AnalyticsView({
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 lg:gap-6 mb-8">
+        <StatCard
+          label="Total Voters"
+          value={uniqueVoters.toLocaleString()}
+        />
         <StatCard label="Total Votes" value={totalVotes.toLocaleString()} />
         <StatCard label="Average Score" value={avgScore} />
-        <StatCard
-          label="Acts with Votes"
-          value={`${actsWithVotes} / ${results.length}`}
-        />
+        <StatCard label="Total Acts" value={String(results.length)} />
       </div>
 
-      {/* Racing bar chart */}
+      {/* Racing bar chart — top 5 coloured, rest greyed */}
       <div className="bg-gray-900/50 rounded-2xl border border-gray-800/50 p-6 mb-8">
         <h2 className="text-lg font-bold text-white mb-6">
           All Acts — Ranked by Total Score
         </h2>
         <div className="space-y-2">
           {sorted.map((act, idx) => {
+            const rank = idx + 1;
             const pct =
               maxScore > 0
                 ? (Number(act.stats.totalScore) / maxScore) * 100
                 : 0;
             const hex = CHURCH_COLORS[act.church] || "#6b7280";
+            const isTop5 = rank <= 5;
             return (
-              <div key={act.id} className="flex items-center gap-3">
-                <span className="text-gray-500 text-xs w-6 text-right font-mono">
-                  {idx + 1}
+              <div
+                key={act.id}
+                className={`flex items-center gap-3 transition-opacity duration-700 ${isTop5 ? "" : "opacity-40"}`}
+              >
+                <span
+                  className={`text-xs w-6 text-right font-mono ${isTop5 ? "text-yellow-400 font-bold" : "text-gray-600"}`}
+                >
+                  {rank}
                 </span>
                 <div className="w-40 lg:w-56 truncate">
-                  <span className="text-white text-sm font-medium">
+                  <span
+                    className={`text-sm font-medium ${isTop5 ? "text-white" : "text-gray-500"}`}
+                  >
                     {act.nameZh}
                   </span>
-                  <span className="text-gray-500 text-xs ml-2 hidden lg:inline">
+                  <span
+                    className={`text-xs ml-2 hidden lg:inline ${isTop5 ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     {act.nameEn}
                   </span>
                 </div>
@@ -469,23 +530,27 @@ function AnalyticsView({
                     className="h-full rounded-r-lg transition-all duration-1000 ease-out flex items-center justify-end pr-3"
                     style={{
                       width: barsVisible ? `${Math.max(pct, 2)}%` : "0%",
-                      backgroundColor: hex,
+                      backgroundColor: isTop5 ? hex : "#374151",
                       transitionDelay: `${idx * 80}ms`,
                     }}
                   >
                     {barsVisible && pct > 15 && (
-                      <span className="text-white text-xs font-bold">
+                      <span
+                        className={`text-xs font-bold ${isTop5 ? "text-white" : "text-gray-500"}`}
+                      >
                         {act.stats.totalScore}
                       </span>
                     )}
                   </div>
                   {barsVisible && pct <= 15 && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
+                    <span
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold ${isTop5 ? "text-gray-400" : "text-gray-600"}`}
+                    >
                       {act.stats.totalScore}
                     </span>
                   )}
                 </div>
-                <ChurchBadge church={act.church} />
+                <ChurchBadge church={act.church} dimmed={!isTop5} />
               </div>
             );
           })}
@@ -529,7 +594,11 @@ function AnalyticsView({
                   <span className="text-gray-400 text-sm w-16 text-right font-mono">
                     {count}{" "}
                     <span className="text-gray-600">
-                      ({totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0}%)
+                      (
+                      {totalVotes > 0
+                        ? Math.round((count / totalVotes) * 100)
+                        : 0}
+                      %)
                     </span>
                   </span>
                 </div>

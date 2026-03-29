@@ -75,6 +75,14 @@ export async function GET(request: NextRequest) {
 
     const statsMap = new Map(voteStats.map((s) => [s.actId, s]));
 
+    // Count unique voters across all votes
+    const uniqueVotersResult = await db
+      .select({
+        count: sql<number>`count(distinct ${votes.voterId})`,
+      })
+      .from(votes);
+    const uniqueVoters = Number(uniqueVotersResult[0]?.count ?? 0);
+
     const results = allActs.map((act) => ({
       ...act,
       stats: statsMap.get(act.id) || {
@@ -92,6 +100,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       results,
       votingLocked: lockSetting[0]?.value === "true",
+      uniqueVoters,
     });
   } catch (error) {
     console.error("Error fetching admin data:", error);
