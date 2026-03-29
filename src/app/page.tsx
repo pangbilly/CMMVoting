@@ -146,10 +146,12 @@ export default function VotingPage() {
           {acts.map((act, index) => (
             <div
               key={act.id}
-              className={`bg-white rounded-xl shadow-sm border p-4 transition-all ${
+              className={`rounded-xl shadow-sm border p-4 transition-all ${
                 act.isActive
-                  ? "border-yellow-400 ring-2 ring-yellow-200"
-                  : "border-gray-200"
+                  ? "border-yellow-400 ring-2 ring-yellow-200 bg-white"
+                  : myVotes[act.id]
+                    ? "border-green-300 bg-green-50"
+                    : "border-gray-200 bg-white"
               }`}
             >
               {/* Act number and name */}
