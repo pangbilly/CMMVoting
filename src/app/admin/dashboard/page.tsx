@@ -409,15 +409,20 @@ function RevealView({
               );
             }
 
-            // Bar width: only grow if in race and barsGrowing is true
+            // Bar width logic:
+            // Rounds 1-3: all surviving bars grow to EQUAL length (no spoilers)
+            // Round 4 (final): bars grow to ACTUAL proportional lengths
+            const targetWidth =
+              round >= 4 ? `${Math.max(pct, 3)}%` : "100%";
+
             const barWidth =
               round === 0
                 ? "0%"
                 : inRace && barsGrowing
-                  ? `${Math.max(pct, 3)}%`
+                  ? targetWidth
                   : inRace
                     ? "0%"
-                    : `${Math.max(pct, 3)}%`; // eliminated acts keep their bar
+                    : targetWidth; // eliminated acts keep their bar
 
             return (
               <div
