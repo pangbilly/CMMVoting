@@ -425,19 +425,22 @@ function RevealView({
               );
             }
 
-            // Rounds 1-3: ALL bars grow to EQUAL length (no spoilers)
+            // Rounds 1-3: ALL surviving bars grow to EQUAL length (no spoilers)
             // Round 4 (final): bars grow to ACTUAL proportional lengths
+            // Eliminated bars shrink to 0
             const targetWidth =
               round >= 4 ? `${Math.max(pct, 3)}%` : "100%";
 
             const barWidth =
               round === 0
                 ? "0%"
-                : inRace && barsGrowing
-                  ? targetWidth
-                  : inRace
-                    ? "0%"
-                    : targetWidth;
+                : eliminated
+                  ? "0%"
+                  : inRace && barsGrowing
+                    ? targetWidth
+                    : inRace
+                      ? "0%"
+                      : targetWidth;
 
             return (
               <div
@@ -491,7 +494,11 @@ function RevealView({
                       transitionProperty: "width",
                       transitionTimingFunction: "cubic-bezier(0.25, 0.1, 0.25, 1)",
                       transitionDuration:
-                        barsGrowing && inRace ? `${GROW_DURATION}ms` : "0ms",
+                        barsGrowing && inRace
+                          ? `${GROW_DURATION}ms`
+                          : eliminated
+                            ? "1500ms"
+                            : "0ms",
                     }}
                   >
                     {scoresRevealed && pct > 18 && !eliminated && (
