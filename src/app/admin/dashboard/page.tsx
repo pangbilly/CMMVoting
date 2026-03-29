@@ -274,6 +274,7 @@ export default function DashboardPage() {
 
       {activeView === "reveal" ? (
         <RevealView
+          results={results}
           sorted={sorted}
           round={round}
           phase={phase}
@@ -302,6 +303,7 @@ export default function DashboardPage() {
 // Round 4: top 2 re-grow → #2 fades → winner
 
 function RevealView({
+  results,
   sorted,
   round,
   phase,
@@ -309,6 +311,7 @@ function RevealView({
   onNext,
   onReset,
 }: {
+  results: ActResult[];
   sorted: ActResult[];
   round: number;
   phase: "idle" | "growing" | "settled";
@@ -317,6 +320,9 @@ function RevealView({
   onReset: () => void;
 }) {
   const maxScore = sorted.length > 0 ? Number(sorted[0].stats.totalScore) : 1;
+
+  // Build a rank map from sorted: actId → rank (1 = highest score)
+  const rankMap = new Map(sorted.map((a, i) => [a.id, i + 1]));
 
   // Only show scores at the very end (winner revealed)
   const scoresRevealed = round >= 4 && phase === "settled";
@@ -327,6 +333,11 @@ function RevealView({
   // How many survivors from the PREVIOUS round (what's visible during growth)
   const prevSurvivors =
     round > 0 ? (ROUND_CONFIG[round - 1]?.survivors ?? Infinity) : Infinity;
+
+  // Display acts in ORIGINAL performance order (by orderNumber)
+  const displayOrder = [...results].sort(
+    (a, b) => a.orderNumber - b.orderNumber
+  );
 
   // Title
   const title =
@@ -371,25 +382,31 @@ function RevealView({
         {title}
       </h1>
 
-      {/* Bar race chart */}
+      {/* Bar race chart — acts in PERFORMANCE ORDER, not score order */}
       <div className="flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full">
         <div className="space-y-1.5 lg:space-y-2">
-          {sorted.map((act, idx) => {
-            const rank = idx + 1;
+          {displayOrder.map((act) => {
+            const rank = rankMap.get(act.id) ?? 999;
             const pct =
               maxScore > 0
                 ? (Number(act.stats.totalScore) / maxScore) * 100
                 : 0;
             const hex = CHURCH_COLORS[act.church] || "#6b7280";
+            const hasVotes = Number(act.stats.totalVotes) > 0;
 
             // Is this act still "in the race" for the current round's growth?
-            const inRace = rank <= prevSurvivors;
+            const inRace = hasVotes && rank <= prevSurvivors;
 
             // Has this act been eliminated (settled phase, rank > survivors)?
-            const eliminated = phase === "settled" && rank > currentSurvivors;
+            const eliminated =
+              !hasVotes ||
+              (phase === "settled" && rank > currentSurvivors);
 
             // Was already eliminated in a previous round?
-            const previouslyEliminated = round > 1 && rank > prevSurvivors;
+            const previouslyEliminated =
+              !hasVotes
+                ? round > 1
+                : round > 1 && rank > prevSurvivors;
 
             // Winner glow
             const isWinner = round >= 4 && phase === "settled" && rank === 1;
@@ -399,7 +416,6 @@ function RevealView({
 
             // Determine visibility
             if (previouslyEliminated) {
-              // Already gone from a previous round — render collapsed
               return (
                 <div
                   key={act.id}
@@ -409,8 +425,7 @@ function RevealView({
               );
             }
 
-            // Bar width logic:
-            // Rounds 1-3: all surviving bars grow to EQUAL length (no spoilers)
+            // Rounds 1-3: ALL bars grow to EQUAL length (no spoilers)
             // Round 4 (final): bars grow to ACTUAL proportional lengths
             const targetWidth =
               round >= 4 ? `${Math.max(pct, 3)}%` : "100%";
@@ -422,7 +437,7 @@ function RevealView({
                   ? targetWidth
                   : inRace
                     ? "0%"
-                    : targetWidth; // eliminated acts keep their bar
+                    : targetWidth;
 
             return (
               <div
@@ -435,7 +450,7 @@ function RevealView({
                       : "opacity-100"
                 }`}
               >
-                {/* Rank / Medal */}
+                {/* Act number / Medal */}
                 <span className="text-lg lg:text-2xl w-8 lg:w-10 text-right">
                   {showMedal && MEDAL_EMOJI[rank] ? (
                     MEDAL_EMOJI[rank]
@@ -443,7 +458,7 @@ function RevealView({
                     <span
                       className={`text-xs lg:text-sm font-mono transition-colors duration-700 ${eliminated ? "text-gray-700" : "text-gray-500"}`}
                     >
-                      {rank}
+                      {act.orderNumber}
                     </span>
                   )}
                 </span>
