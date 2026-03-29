@@ -318,6 +318,9 @@ function RevealView({
 }) {
   const maxScore = sorted.length > 0 ? Number(sorted[0].stats.totalScore) : 1;
 
+  // Only show scores at the very end (winner revealed)
+  const scoresRevealed = round >= 4 && phase === "settled";
+
   // How many survivors at the CURRENT round (after elimination)
   const currentSurvivors = ROUND_CONFIG[round]?.survivors ?? Infinity;
 
@@ -391,9 +394,8 @@ function RevealView({
             // Winner glow
             const isWinner = round >= 4 && phase === "settled" && rank === 1;
 
-            // Show medal when settled and in top 3 of current survivors
-            const showMedal =
-              phase === "settled" && rank <= 3 && rank <= currentSurvivors;
+            // Show medal only at final reveal
+            const showMedal = scoresRevealed && rank <= 3;
 
             // Determine visibility
             if (previouslyEliminated) {
@@ -472,13 +474,13 @@ function RevealView({
                         barsGrowing && inRace ? `${GROW_DURATION}ms` : "0ms",
                     }}
                   >
-                    {barsGrowing && pct > 18 && !eliminated && (
+                    {scoresRevealed && pct > 18 && !eliminated && (
                       <span className="text-xs lg:text-sm font-bold text-white">
                         {act.stats.totalScore}
                       </span>
                     )}
                   </div>
-                  {barsGrowing && pct <= 18 && !eliminated && (
+                  {scoresRevealed && pct <= 18 && !eliminated && (
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
                       {act.stats.totalScore}
                     </span>
