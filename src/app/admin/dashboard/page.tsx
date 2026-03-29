@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 type ActResult = {
   id: number;
@@ -40,7 +40,7 @@ function ChurchBadge({
   const hex = CHURCH_COLORS[church] || "#6b7280";
   return (
     <span
-      className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide transition-opacity duration-700 ${dimmed ? "opacity-30" : ""}`}
+      className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide transition-opacity duration-1000 ${dimmed ? "opacity-20" : ""}`}
       style={{
         backgroundColor: `${hex}20`,
         color: hex,
@@ -52,27 +52,28 @@ function ChurchBadge({
   );
 }
 
-// Reveal stages for the Top 5 view:
-// 0 = nothing shown
-// 1 = all bars grow (full race chart, all acts)
-// 2 = top 5 highlighted, rest greyed out
-// 3 = top 3 highlighted, rest greyed out
-// 4 = winner highlighted
-type RevealStage = 0 | 1 | 2 | 3 | 4;
-
-const STAGE_LABELS: Record<RevealStage, string> = {
-  0: "Show All Acts",
-  1: "Reveal Top 5",
-  2: "Reveal Top 3",
-  3: "Reveal Winner",
-  4: "All Revealed!",
-};
-
 const MEDAL_EMOJI: Record<number, string> = {
-  1: "🥇",
-  2: "🥈",
-  3: "🥉",
+  1: "\u{1F947}",
+  2: "\u{1F948}",
+  3: "\u{1F949}",
 };
+
+// Reveal rounds:
+// 0: idle — nothing shown
+// 1: all acts race → then non-top-5 fade out
+// 2: top 5 re-race → then non-top-3 fade out
+// 3: top 3 re-race → then non-top-2 fade out
+// 4: top 2 re-race → then #2 fades, winner glows
+const ROUND_CONFIG = [
+  { survivors: Infinity, nextLabel: "Start Race" },
+  { survivors: 5, nextLabel: "Reveal Top 3" },
+  { survivors: 3, nextLabel: "Reveal Top 2" },
+  { survivors: 2, nextLabel: "Reveal Winner" },
+  { survivors: 1, nextLabel: "" },
+];
+
+const GROW_DURATION = 10000; // 10 seconds
+const FADE_DELAY = 1500; // pause before fade after growth
 
 export default function DashboardPage() {
   const [password, setPassword] = useState("");
@@ -84,8 +85,18 @@ export default function DashboardPage() {
   const [activeView, setActiveView] = useState<"reveal" | "analytics">(
     "reveal"
   );
-  const [revealStage, setRevealStage] = useState<RevealStage>(0);
   const [barsVisible, setBarsVisible] = useState(false);
+
+  // Reveal state
+  const [round, setRound] = useState(0); // 0-4
+  const [phase, setPhase] = useState<"idle" | "growing" | "settled">("idle");
+  const [barsGrowing, setBarsGrowing] = useState(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearTimers = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  };
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
@@ -140,19 +151,6 @@ export default function DashboardPage() {
     }
   }, [activeView]);
 
-  // Keyboard support for reveal mode
-  useEffect(() => {
-    if (activeView !== "reveal") return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowRight") {
-        e.preventDefault();
-        setRevealStage((s) => (s < 4 ? ((s + 1) as RevealStage) : s));
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [activeView]);
-
   const sorted = [...results]
     .filter((a) => Number(a.stats.totalVotes) > 0)
     .sort(
@@ -161,6 +159,51 @@ export default function DashboardPage() {
         Number(b.stats.avgScore) - Number(a.stats.avgScore) ||
         a.nameEn.localeCompare(b.nameEn)
     );
+
+  // Start next reveal round
+  const startNextRound = useCallback(() => {
+    if (phase === "growing" || round >= 4) return;
+
+    const nextRound = round + 1;
+    setRound(nextRound);
+    setPhase("growing");
+
+    // Step 1: reset bars to 0 (no transition)
+    setBarsGrowing(false);
+
+    // Step 2: after a tick, start growth (with 10s transition)
+    const t1 = setTimeout(() => setBarsGrowing(true), 80);
+
+    // Step 3: after 10s growth + short pause, settle (trigger elimination fade)
+    const t2 = setTimeout(() => {
+      setPhase("settled");
+    }, GROW_DURATION + FADE_DELAY);
+
+    timersRef.current = [t1, t2];
+  }, [round, phase]);
+
+  const resetReveal = () => {
+    clearTimers();
+    setRound(0);
+    setPhase("idle");
+    setBarsGrowing(false);
+  };
+
+  // Keyboard support
+  useEffect(() => {
+    if (activeView !== "reveal") return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowRight") {
+        e.preventDefault();
+        startNextRound();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeView, startNextRound]);
+
+  // Cleanup timers on unmount
+  useEffect(() => clearTimers, []);
 
   // --- Login screen ---
   if (!authenticated) {
@@ -232,11 +275,11 @@ export default function DashboardPage() {
       {activeView === "reveal" ? (
         <RevealView
           sorted={sorted}
-          revealStage={revealStage}
-          onNext={() =>
-            setRevealStage((s) => (s < 4 ? ((s + 1) as RevealStage) : s))
-          }
-          onReset={() => setRevealStage(0)}
+          round={round}
+          phase={phase}
+          barsGrowing={barsGrowing}
+          onNext={startNextRound}
+          onReset={resetReveal}
         />
       ) : (
         <AnalyticsView
@@ -251,52 +294,77 @@ export default function DashboardPage() {
 }
 
 // =====================================================
-// VIEW 1: STAGED TOP 5 REVEAL (BAR RACE)
+// VIEW 1: STAGED BAR RACE REVEAL
 // =====================================================
+// Round 1: all bars grow → non-top-5 fade
+// Round 2: top 5 re-grow → non-top-3 fade
+// Round 3: top 3 re-grow → non-top-2 fade
+// Round 4: top 2 re-grow → #2 fades → winner
 
 function RevealView({
   sorted,
-  revealStage,
+  round,
+  phase,
+  barsGrowing,
   onNext,
   onReset,
 }: {
   sorted: ActResult[];
-  revealStage: RevealStage;
+  round: number;
+  phase: "idle" | "growing" | "settled";
+  barsGrowing: boolean;
   onNext: () => void;
   onReset: () => void;
 }) {
   const maxScore = sorted.length > 0 ? Number(sorted[0].stats.totalScore) : 1;
 
-  // Which acts are highlighted at each stage
-  const highlightCount =
-    revealStage === 0
-      ? 0
-      : revealStage === 1
-        ? sorted.length // all highlighted
-        : revealStage === 2
-          ? 5
-          : revealStage === 3
-            ? 3
-            : 1;
+  // How many survivors at the CURRENT round (after elimination)
+  const currentSurvivors = ROUND_CONFIG[round]?.survivors ?? Infinity;
 
-  const showBars = revealStage >= 1;
+  // How many survivors from the PREVIOUS round (what's visible during growth)
+  const prevSurvivors =
+    round > 0 ? (ROUND_CONFIG[round - 1]?.survivors ?? Infinity) : Infinity;
 
-  // Title changes with stage
+  // Title
   const title =
-    revealStage === 0
+    round === 0
       ? "CMM GOT TALENT"
-      : revealStage === 1
-        ? "ALL ACTS"
-        : revealStage === 2
+      : round === 1 && phase === "growing"
+        ? "THE RACE IS ON..."
+        : round === 1
           ? "TOP 5"
-          : revealStage === 3
-            ? "TOP 3"
-            : "WINNER";
+          : round === 2 && phase === "growing"
+            ? "AND THE TOP 3..."
+            : round === 2
+              ? "TOP 3"
+              : round === 3 && phase === "growing"
+                ? "NARROWING DOWN..."
+                : round === 3
+                  ? "TOP 2"
+                  : round === 4 && phase === "growing"
+                    ? "AND THE WINNER IS..."
+                    : "WINNER";
+
+  const buttonDisabled = phase === "growing" || (round >= 4 && phase === "settled");
+  const buttonLabel =
+    phase === "growing"
+      ? "Racing..."
+      : round >= 4 && phase === "settled"
+        ? "All Revealed!"
+        : ROUND_CONFIG[round]?.nextLabel || "Start Race";
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-56px)] px-6 lg:px-12 py-6 relative">
       {/* Title */}
-      <h1 className="text-5xl lg:text-7xl font-black text-center mb-6 lg:mb-8 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+      <h1
+        className={`text-5xl lg:text-7xl font-black text-center mb-6 lg:mb-8 bg-gradient-to-r bg-clip-text text-transparent transition-all duration-1000 ${
+          round >= 4 && phase === "settled"
+            ? "from-yellow-300 via-yellow-400 to-amber-500"
+            : phase === "growing"
+              ? "from-yellow-400/70 via-amber-400/70 to-yellow-500/70"
+              : "from-yellow-400 via-amber-400 to-yellow-500"
+        }`}
+      >
         {title}
       </h1>
 
@@ -311,29 +379,63 @@ function RevealView({
                 : 0;
             const hex = CHURCH_COLORS[act.church] || "#6b7280";
 
-            const isHighlighted =
-              revealStage === 1 || rank <= highlightCount;
-            const isDimmed = revealStage >= 2 && !isHighlighted;
-            const isWinner = revealStage === 4 && rank === 1;
+            // Is this act still "in the race" for the current round's growth?
+            const inRace = rank <= prevSurvivors;
 
-            const medal = MEDAL_EMOJI[rank];
-            const showMedal = revealStage >= 2 && rank <= 3 && isHighlighted;
+            // Has this act been eliminated (settled phase, rank > survivors)?
+            const eliminated = phase === "settled" && rank > currentSurvivors;
+
+            // Was already eliminated in a previous round?
+            const previouslyEliminated = round > 1 && rank > prevSurvivors;
+
+            // Winner glow
+            const isWinner = round >= 4 && phase === "settled" && rank === 1;
+
+            // Show medal when settled and in top 3 of current survivors
+            const showMedal =
+              phase === "settled" && rank <= 3 && rank <= currentSurvivors;
+
+            // Determine visibility
+            if (previouslyEliminated) {
+              // Already gone from a previous round — render collapsed
+              return (
+                <div
+                  key={act.id}
+                  className="transition-all duration-1000 overflow-hidden"
+                  style={{ maxHeight: 0, opacity: 0, marginTop: 0, marginBottom: 0 }}
+                />
+              );
+            }
+
+            // Bar width: only grow if in race and barsGrowing is true
+            const barWidth =
+              round === 0
+                ? "0%"
+                : inRace && barsGrowing
+                  ? `${Math.max(pct, 3)}%`
+                  : inRace
+                    ? "0%"
+                    : `${Math.max(pct, 3)}%`; // eliminated acts keep their bar
 
             return (
               <div
                 key={act.id}
-                className={`flex items-center gap-2 lg:gap-3 transition-all duration-700 ${
-                  isDimmed
-                    ? "opacity-25 scale-[0.97]"
+                className={`flex items-center gap-2 lg:gap-3 transition-all duration-1000 ${
+                  eliminated
+                    ? "opacity-15 scale-[0.96]"
                     : isWinner
-                      ? "scale-[1.02]"
+                      ? "scale-[1.03]"
                       : "opacity-100"
                 }`}
               >
                 {/* Rank / Medal */}
                 <span className="text-lg lg:text-2xl w-8 lg:w-10 text-right">
-                  {showMedal ? medal : (
-                    <span className="text-gray-500 text-xs lg:text-sm font-mono">
+                  {showMedal && MEDAL_EMOJI[rank] ? (
+                    MEDAL_EMOJI[rank]
+                  ) : (
+                    <span
+                      className={`text-xs lg:text-sm font-mono transition-colors duration-700 ${eliminated ? "text-gray-700" : "text-gray-500"}`}
+                    >
                       {rank}
                     </span>
                   )}
@@ -342,12 +444,12 @@ function RevealView({
                 {/* Name */}
                 <div className="w-36 lg:w-52 truncate">
                   <span
-                    className={`text-sm lg:text-base font-bold transition-colors duration-700 ${isDimmed ? "text-gray-600" : "text-white"}`}
+                    className={`text-sm lg:text-base font-bold transition-colors duration-1000 ${eliminated ? "text-gray-700" : "text-white"}`}
                   >
                     {act.nameZh}
                   </span>
                   <span
-                    className={`text-xs ml-1.5 hidden lg:inline transition-colors duration-700 ${isDimmed ? "text-gray-700" : "text-gray-400"}`}
+                    className={`text-xs ml-1.5 hidden lg:inline transition-colors duration-1000 ${eliminated ? "text-gray-800" : "text-gray-400"}`}
                   >
                     {act.nameEn}
                   </span>
@@ -356,38 +458,35 @@ function RevealView({
                 {/* Bar */}
                 <div className="flex-1 h-8 lg:h-10 bg-gray-800/40 rounded-r-lg overflow-hidden relative">
                   <div
-                    className={`h-full rounded-r-lg transition-all ease-out flex items-center justify-end pr-3 ${
+                    className={`h-full rounded-r-lg flex items-center justify-end pr-3 ${
                       isWinner
-                        ? "shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+                        ? "shadow-[0_0_25px_rgba(234,179,8,0.5)]"
                         : ""
                     }`}
                     style={{
-                      width: showBars ? `${Math.max(pct, 3)}%` : "0%",
-                      backgroundColor: isDimmed ? "#374151" : hex,
-                      transitionDuration: revealStage === 1 ? "1200ms" : "800ms",
-                      transitionDelay:
-                        revealStage === 1 ? `${idx * 60}ms` : "0ms",
+                      width: barWidth,
+                      backgroundColor: eliminated ? "#1f2937" : hex,
+                      transitionProperty: "width",
+                      transitionTimingFunction: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+                      transitionDuration:
+                        barsGrowing && inRace ? `${GROW_DURATION}ms` : "0ms",
                     }}
                   >
-                    {showBars && pct > 18 && (
-                      <span
-                        className={`text-xs lg:text-sm font-bold transition-colors duration-700 ${isDimmed ? "text-gray-500" : "text-white"}`}
-                      >
+                    {barsGrowing && pct > 18 && !eliminated && (
+                      <span className="text-xs lg:text-sm font-bold text-white">
                         {act.stats.totalScore}
                       </span>
                     )}
                   </div>
-                  {showBars && pct <= 18 && (
-                    <span
-                      className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold ${isDimmed ? "text-gray-600" : "text-gray-400"}`}
-                    >
+                  {barsGrowing && pct <= 18 && !eliminated && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
                       {act.stats.totalScore}
                     </span>
                   )}
                 </div>
 
                 {/* Church badge */}
-                <ChurchBadge church={act.church} dimmed={isDimmed} />
+                <ChurchBadge church={act.church} dimmed={eliminated} />
               </div>
             );
           })}
@@ -397,18 +496,20 @@ function RevealView({
       {/* Next stage button */}
       <button
         onClick={onNext}
-        disabled={revealStage >= 4}
+        disabled={buttonDisabled}
         className={`fixed bottom-8 right-8 px-6 py-3 lg:px-8 lg:py-4 rounded-2xl font-bold text-base lg:text-xl transition-all ${
-          revealStage >= 4
+          round >= 4 && phase === "settled"
             ? "bg-green-600 text-white cursor-default"
-            : "bg-yellow-500 hover:bg-yellow-400 text-gray-950 shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)]"
+            : buttonDisabled
+              ? "bg-gray-700 text-gray-400 cursor-wait"
+              : "bg-yellow-500 hover:bg-yellow-400 text-gray-950 shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)]"
         }`}
       >
-        {STAGE_LABELS[revealStage]}
+        {buttonLabel}
       </button>
 
       {/* Reset button */}
-      {revealStage > 0 && (
+      {round > 0 && (
         <button
           onClick={onReset}
           className="fixed bottom-8 left-8 px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 transition-colors"
@@ -418,7 +519,7 @@ function RevealView({
       )}
 
       {/* Hint */}
-      {revealStage === 0 && (
+      {round === 0 && (
         <p className="text-gray-600 text-sm text-center mt-4 animate-pulse">
           Press Space, Arrow Right, or click the button to begin
         </p>
